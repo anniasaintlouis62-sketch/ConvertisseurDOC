@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: convertisseur-doc
+    runtime: docker
+    plan: free
+    envVars:
+      - key: SOFFICE_PATH
+        value: /usr/bin/soffice
+      - key: STORAGE_BASE_DIR
+        value: /app/data/uploads

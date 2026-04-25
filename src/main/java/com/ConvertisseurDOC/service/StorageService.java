@@ -5,14 +5,19 @@ import com.ConvertisseurDOC.model.ConversionType;
 import com.ConvertisseurDOC.repository.InMemoryJobRepository;
 import com.ConvertisseurDOC.repository.JobRepository;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 public class StorageService {
 
-    // ⚠️ volontairement relatif pour voir EXACTEMENT où Tomcat écrit
-    private static final String BASE_DIR = "uploads";
+    // ✅ On cherche d'abord dans les variables d'environnement, sinon on utilise "uploads" par défaut
+    private static final String BASE_DIR = 
+            System.getenv("STORAGE_BASE_DIR") != null ? System.getenv("STORAGE_BASE_DIR") : "uploads";
 
     private final JobRepository jobRepository;
 
@@ -26,6 +31,9 @@ public class StorageService {
      * Crée un nouveau job
      */
     public ConversionJob createJob(ConversionType type, String inputFileName) {
+        // ✅ Nettoyage automatique des vieux fichiers avant chaque nouveau job
+        cleanupOldJobs();
+
         String id = UUID.randomUUID().toString();
         ConversionJob job = new ConversionJob(id, type);
         job.setInputFileName(inputFileName);
@@ -128,5 +136,45 @@ public class StorageService {
         System.out.println("  exists = " + Files.exists(file));
 
         return file;
+    }
+
+    /**
+     * ✅ Nettoie les fichiers vieux de plus de 30 minutes
+     * Essentiel pour le plan gratuit de Render (512MB RAM/Disk)
+     */
+    private void cleanupOldJobs() {
+        Path root = Paths.get(BASE_DIR);
+        if (!Files.exists(root)) return;
+
+        Instant threshold = Instant.now().minus(30, ChronoUnit.MINUTES);
+
+        try (Stream<Path> paths = Files.list(root)) {
+            paths.filter(Files::isDirectory).forEach(p -> {
+                try {
+                    Instant lastModified = Files.getLastModifiedTime(p).toInstant();
+                    if (lastModified.isBefore(threshold)) {
+                        deleteDir(p);
+                        System.out.println("CLEANUP: deleted old job dir " + p);
+                    }
+                } catch (IOException e) {
+                    System.err.println("CLEANUP: failed to check/delete " + p + ": " + e.getMessage());
+                }
+            });
+        } catch (IOException e) {
+            System.err.println("CLEANUP: failed to list root " + root + ": " + e.getMessage());
+        }
+    }
+
+    private void deleteDir(Path path) throws IOException {
+        try (Stream<Path> walk = Files.walk(path)) {
+            walk.sorted(java.util.Comparator.reverseOrder())
+                .forEach(p -> {
+                    try {
+                        Files.delete(p);
+                    } catch (IOException e) {
+                        System.err.println("CLEANUP: failed to delete file " + p);
+                    }
+                });
+        }
     }
 }

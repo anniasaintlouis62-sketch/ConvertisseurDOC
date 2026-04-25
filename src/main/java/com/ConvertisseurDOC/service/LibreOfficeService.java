@@ -11,9 +11,9 @@ import java.util.List;
 
 public class LibreOfficeService {
 
-    // ⚠️ Mets ici le chemin EXACT vers soffice.exe
+    // ✅ On cherche d'abord dans les variables d'environnement, sinon on utilise le chemin Windows par défaut
     private static final String DEFAULT_SOFFICE =
-            "C:\\Program Files\\LibreOffice\\program\\soffice.exe";
+            System.getenv("SOFFICE_PATH") != null ? System.getenv("SOFFICE_PATH") : "C:\\Program Files\\LibreOffice\\program\\soffice.exe";
 
     private final String sofficeCmd;
 
