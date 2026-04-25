@@ -7,10 +7,12 @@ public class AppContext {
     private static final PreviewService PREVIEW_SERVICE = new PreviewService(LIBRE_OFFICE_SERVICE);
     private static final ConversionService CONVERSION_SERVICE = new ConversionService(STORAGE_SERVICE);
     
-    // Mets ici l’URL publique de ton appli en production
-    // En local: http://localhost:8080/NOM_DU_PROJET
+    // ✅ Utilise l'URL de production si disponible, sinon localhost
+    private static final String APP_URL = 
+            System.getenv("APP_URL") != null ? System.getenv("APP_URL") : "http://localhost:8080/ConvertisseurDOC";
+
     private static final ShareLinkService SHARE_LINK_SERVICE =
-            new ShareLinkService("http://localhost:8080/PdfConverterWeb");
+            new ShareLinkService(APP_URL);
 
     public static StorageService storage() { return STORAGE_SERVICE; }
     public static LibreOfficeService libreOffice() { return LIBRE_OFFICE_SERVICE; }
